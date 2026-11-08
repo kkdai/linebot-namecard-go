@@ -43,7 +43,28 @@ go run ./cmd/server
 
 ---
 
-## 部署至 Google Cloud Run
+## 部署至 Google Cloud Run 與自動切換 LINE Webhook
+
+本專案提供一鍵遷移腳本 [`scripts/deploy_and_switch_webhook.sh`](./scripts/deploy_and_switch_webhook.sh)，會自動完成以下 5 個步驟：
+1. 透過 `gcloud run services describe YOUR_OLD_CLOUD_RUN_SERVICE` 撈取原本 Python 服務上的所有環境變數（含 `ChannelSecret`、`ChannelAccessToken`、`FIREBASE_URL`、`FIREBASE_STORAGE_BUCKET`、`GOOGLE_APPLICATION_CREDENTIALS_JSON`）。
+2. 使用相同環境變數將本專案部署為新的 Cloud Run 服務（透過環境變數指定 `PROJECT_ID`、`REGION`、`OLD_SERVICE`、`NEW_SERVICE`）。
+3. 驗證新服務的 `GET /` Health Check。
+4. 呼叫 LINE Messaging API (`PUT https://api.line.me/v2/bot/channel/webhook/endpoint`) 將 Webhook URL 無縫切換至新的 Go Cloud Run 服務。
+5. 呼叫 LINE Messaging API (`POST https://api.line.me/v2/bot/channel/webhook/test`) 驗證 Webhook 連線。
+
+```bash
+# 一鍵複製環境變數、部署 Go 新機器並切換 LINE Webhook
+export PROJECT_ID="YOUR_GCP_PROJECT_ID"
+export REGION="YOUR_GCP_REGION"
+export OLD_SERVICE="YOUR_OLD_CLOUD_RUN_SERVICE"
+export NEW_SERVICE="YOUR_NEW_CLOUD_RUN_SERVICE"
+./scripts/deploy_and_switch_webhook.sh
+
+# 若需一鍵切回舊版 Python 機器 (Rollback)
+./scripts/deploy_and_switch_webhook.sh --rollback
+```
+
+### 手動部署指令
 
 ```bash
 gcloud run deploy YOUR_NEW_CLOUD_RUN_SERVICE \
